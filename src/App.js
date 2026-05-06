@@ -1,25 +1,41 @@
-import logo from './logo.svg';
 import './App.css';
+import '@mantine/core/styles.css'; // Importante: Estilos base do Mantine
+import 'mantine-datatable/styles.css'; // Estilos da Tabela
+import { MantineProvider } from '@mantine/core';
+import useChamadosService from './_services/ChamadosService';
+import TabelaChamados from './_components/TabelaChamados';
+import { ThemeProvider } from './components/theme-provider';
+import { useTheme } from './components/theme-provider';
+import ThemeToggle from "./_components/ThemeToggle";
 
-function App() {
+function AppContent({ chamados }) {
+  const { theme } = useTheme();
+
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <MantineProvider forceColorScheme={isDark ? "dark" : "light"}>
+      <div className="p-4 space-y-4">
+        <div className="flex justify-end">
+          <ThemeToggle />
+        </div>
+
+        <TabelaChamados chamados={chamados} />
+      </div>
+    </MantineProvider>
   );
 }
 
+function App() {
+  const { chamados } = useChamadosService();
+
+  return (
+    <ThemeProvider defaultTheme="dark">
+      <AppContent chamados={chamados} />
+    </ThemeProvider>
+  );
+}
 export default App;
