@@ -30,7 +30,7 @@ function useChamadosService() {
         }
     }, []);
 
-    useEffect(() => { CarregarChamados(); }, []);
+    useEffect(() => { CarregarChamados(); }, [CarregarChamados]);
 
     return state;
 }

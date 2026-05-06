@@ -10,13 +10,15 @@ import { ptBR } from 'date-fns/locale';
 
 export function TabelaChamados({ chamados }) {
 
-  const listaLimpa = Array.isArray(chamados)
-    ? chamados
-    : (chamados?.data || []);
+  
 
   const [records, setRecords] = useState([]);
 
   useEffect(() => {
+    
+    const listaLimpa = Array.isArray(chamados)
+    ? chamados
+    : (chamados?.data || []);
 
     const listaComScore = listaLimpa.map((chamado) => {
 
