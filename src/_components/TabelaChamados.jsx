@@ -248,7 +248,7 @@ export function TabelaChamados({ chamados }) {
       [...listaComScore].sort((a, b) => b.score - a.score)
     );
 
-  }, [listaLimpa]);
+  }, [chamados]);
 
   return (
 
