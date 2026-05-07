@@ -8,7 +8,7 @@ import { ThemeProvider } from './components/theme-provider';
 import { useTheme } from './components/theme-provider';
 import ThemeToggle from "./_components/ThemeToggle";
 
-function AppContent({ chamados }) {
+function AppContent({ chamados, onRefresh, loading }) {
   const { theme } = useTheme();
 
   const isDark =
@@ -19,7 +19,15 @@ function AppContent({ chamados }) {
   return (
     <MantineProvider forceColorScheme={isDark ? "dark" : "light"}>
       <div className="p-4 space-y-4">
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center gap-2">
+          {/* Botão de Atualizar */}
+          <button
+            onClick={onRefresh}
+            className="px-3 py-1 rounded-md border text-sm bg-background text-foreground hover:bg-muted transition"
+          >
+            Atualizar
+          </button>
+
           <ThemeToggle />
         </div>
 
@@ -30,11 +38,11 @@ function AppContent({ chamados }) {
 }
 
 function App() {
-  const { chamados } = useChamadosService();
+  const { chamados, CarregarChamados} = useChamadosService();
 
   return (
     <ThemeProvider defaultTheme="dark">
-      <AppContent chamados={chamados} />
+      <AppContent chamados={chamados} onRefresh={CarregarChamados}/>
     </ThemeProvider>
   );
 }

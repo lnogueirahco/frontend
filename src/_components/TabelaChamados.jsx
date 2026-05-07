@@ -46,6 +46,9 @@ export function TabelaChamados({ chamados }) {
       const isHomologacao =
         chamado.situation?.description?.includes("Homologação");
 
+      const respondidoPeloCliente = 
+        chamado.situation.id === 3;
+
       const isEmAtendimento =
         chamado.status?.description === "Em Atendimento";
 
@@ -148,7 +151,50 @@ export function TabelaChamados({ chamados }) {
 
         }
 
-      }
+      } 
+
+// Premissa: 
+// Se hoje é 06/05 e a entrega é 11/05 -> diasParaEntrega = -5 (Faltam 5 dias)
+// Se hoje é 06/05 e a entrega é 01/05 -> diasParaEntrega = 5 (Atrasado 5 dias)
+
+const dataAgendamento = chamado.schedule_date
+  ? parseISO(chamado.schedule_date)
+  : undefined;
+
+// 1. SÓ CALCULA SE A DATA EXISTIR
+if (dataAgendamento) {
+    // Calcula a diferença: (Hoje - Data do Ticket)
+    // Se hoje é 06 e a entrega é 11 -> resultado é -5 (Futuro)
+    const diasParaEntrega = differenceInDays(hoje, dataAgendamento);
+    const diasAbsolutos = Math.abs(diasParaEntrega);
+
+    if (diasParaEntrega < 0) {
+        // --- CASO: FUTURO (FALTAM X DIAS) ---
+        if (diasAbsolutos <= 10) {
+            const bonusUrgencia = 3 + (5 - diasAbsolutos) * 2;
+            score += bonusUrgencia;
+            motivos.push(`Faltam ${diasAbsolutos} dia(s) para a entrega.`);
+        }
+    } 
+    else if (diasParaEntrega === 0) {
+        // --- CASO: É HOJE! (SÓ ENTRA SE TIVER DATA) ---
+        score += 25; 
+        motivos.push("ENTREGA PLANEJADA PARA HOJE!");
+    } 
+    else {
+        // --- CASO: ATRASADO (PASSADO) ---
+        const pesoAtraso = Math.min(15 + (diasParaEntrega * 3), 30);
+        score += pesoAtraso;
+        motivos.push(`ATENÇÃO: Entrega atrasada há ${diasParaEntrega} dia(s).`);
+    }
+}
+
+if(respondidoPeloCliente){ 
+  score += 50; 
+  motivos.push("SLA em andamento");
+}
+
+// Se cair no else aqui (sem data), o score não muda e nenhum motivo é adicionado.
 
       /*
       =====================================
@@ -239,6 +285,7 @@ export function TabelaChamados({ chamados }) {
         diasSemInteracao,
         dataUltimaAtividade,
         isHomologacao,
+        respondidoPeloCliente,        
         isEmAtendimento,
       };
 
@@ -366,6 +413,24 @@ export function TabelaChamados({ chamados }) {
                           `}>
                             {item.config.risk}
                           </div>
+                          
+
+  
+                             {item.respondidoPeloCliente
+                            ?      <div className={`
+                              px-2 py-1
+                              rounded-lg
+                              border
+                              text-xs
+                              bg-red-500/10 border-red-500/20
+                              text-red-300 
+                            `} >
+                              Respondido pelo cliente
+                            </div>
+                            : ""}
+                          
+                       
+                          
 
                         </div>
 
@@ -628,10 +693,11 @@ export function TabelaChamados({ chamados }) {
                         text-zinc-500
                         text-xs
                         uppercase
-                        tracking-wider
-                      ">
+                        tracking-wider">
                         Próxima ação
                       </Text>
+
+                      
 
                       <Text className="
                         text-white
@@ -656,6 +722,44 @@ export function TabelaChamados({ chamados }) {
                           "Monitorar andamento operacional do chamado."
                         }
 
+                      <button
+                        onClick={() => window.open(`https://console.tomticket.com/dashboard/ticket/history/${item.id}`, '_blank')}
+                        className="
+                          mt-3 
+                          w-full 
+                          group 
+                          relative 
+                          inline-flex 
+                          items-center 
+                          justify-center 
+                          px-4 
+                          py-2.5 
+                          font-medium 
+                          text-white 
+                          transition-all 
+                          duration-200 
+                          bg-blue-600/10 
+                          border 
+                          border-blue-500/50 
+                          rounded-xl 
+                          hover:bg-blue-600 
+                          hover:border-blue-600 
+                          active:scale-95 
+                          overflow-hidden
+                        "
+                      >
+                        <span className="relative flex items-center gap-2 text-sm">
+                          Abrir Ticket
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="w-4 h-4 transition-transform group-hover:translate-x-1" 
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="arrow-right" />
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
+                        </span>
+                      </button>
                       </Text>
 
                     </div>

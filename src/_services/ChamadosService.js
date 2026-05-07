@@ -32,7 +32,8 @@ function useChamadosService() {
 
     useEffect(() => { CarregarChamados(); }, [CarregarChamados]);
 
-    return state;
+return { ...state, CarregarChamados };
+
 }
 
 export default useChamadosService;
