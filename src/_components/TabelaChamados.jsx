@@ -32,8 +32,9 @@ export function TabelaChamados({ chamados, filter }) {
     const listaLimpa = Array.isArray(chamados) ? chamados : (chamados?.data || []);
     
     const chamadosFiltrados = listaLimpa?.filter(item => 
-      item.protocol.toString().includes(filter)
-    );
+      item.protocol.toString().includes(filter) || 
+      item.organizationName?.toLowerCase().includes(filter.toLowerCase()) 
+    ); 
 
     const listaProcessada = chamadosFiltrados.map((chamado) => {
       const hoje = new Date();
@@ -168,7 +169,13 @@ export function TabelaChamados({ chamados, filter }) {
                     </Text>
                     <Badge variant="outline" className={`text-[10px] border-zinc-700 ${item.isSlaVencido ? 'text-red-400' : 'text-zinc-300'}`}>
                       {item.statusDescription}
+                    </Badge> 
+                    <Badge variant="primary" className={`text-[10px]`}>
+                      <button> 
+                        Resumir com IA
+                      </button>
                     </Badge>
+
                   </Group>
 
                 <Group gap="sm" >
@@ -182,11 +189,11 @@ export function TabelaChamados({ chamados, filter }) {
                 </Group>
 
                 <Title order={3} className="text-zinc-100 text-xl font-bold truncate mb-1">
-                  {item.organizationName}
+                  {item.organizationName} 
                 </Title>
                 <Text className="text-zinc-400 text-sm font-medium mb-5 truncate">
                   {item.subject}
-                </Text>
+                </Text> 
 
                 {/* VISUALIZADOR DE MENSAGENS (Ação vs Reação) */}
                 <Stack gap="sm" className="bg-black/30 p-4 rounded-xl border border-zinc-800/50">
@@ -277,6 +284,7 @@ export function TabelaChamados({ chamados, filter }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                 </button>
+                
               </div>
 
             </div>

@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 
 function AppContent({ chamados, onRefresh, loading }) {
   const { theme } = useTheme();
-  const [filter, setFilter] = useState(0);
+  const [filter, setFilter] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['todos'],
     queryFn: buscarChamados, 
