@@ -25,13 +25,17 @@ const stripHtml = (html) => {
   return doc.body.textContent || "";
 };
 
-export function TabelaChamados({ chamados }) {
+export function TabelaChamados({ chamados, filter }) {
   const [records, setRecords] = useState([]);
-
+  
   useEffect(() => {
     const listaLimpa = Array.isArray(chamados) ? chamados : (chamados?.data || []);
     
-    const listaProcessada = listaLimpa.map((chamado) => {
+    const chamadosFiltrados = listaLimpa?.filter(item => 
+      item.protocol.toString().includes(filter)
+    );
+
+    const listaProcessada = chamadosFiltrados.map((chamado) => {
       const hoje = new Date();
       
       // Parse seguro das datas
@@ -113,7 +117,7 @@ export function TabelaChamados({ chamados }) {
     });
 
     setRecords([...listaProcessada].sort((a, b) => b.totalScore - a.totalScore));
-  }, [chamados]);
+  }, [chamados, filter]);
 
   return (
     <Stack gap="lg" p="xl" className="bg-[#040405] min-h-screen font-sans selection:bg-blue-500/30">
