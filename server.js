@@ -1,33 +1,37 @@
 const express = require('express');
 const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+
 const app = express();
 const port = 3000;
 
-// 1. CONFIGURAÇÃO DO PROXY
-// Tudo que começar com /v2.0 será redirecionado para a TomTicket
-app.use('/v2.0', createProxyMiddleware({
-    target: 'https://api.tomticket.com',
-    changeOrigin: true,
-    // Garante que o caminho /v2.0 continue na URL final
-    pathRewrite: {
-        '^/v2.0': '/v2.0', 
-    },
-}));
-
-// 2. Serve os arquivos estáticos da build
-app.use(express.static(path.join(__dirname, 'build')));
-
-// 3. Fallback para o React Router (sem usar strings de rota problemáticas)
+// 1. LOG DE REQUISIÇÃO (Para você ver no terminal se está chegando algo)
 app.use((req, res, next) => {
-    // Se não for uma rota de API, manda o index.html
-    if (!req.url.startsWith('/v2.0')) {
-        res.sendFile(path.join(__dirname, 'build', 'index.html'));
-    } else {
-        next();
-    }
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
 });
 
-app.listen(port, () => {
-    console.log(`TicketExpertManager rodando na porta ${port} com Proxy para TomTicket`);
+// 2. PROXY - Mudei para pegar qualquer coisa que venha do Axios
+// Se o seu axios chama /chamados ou /v2.0/chamados, esse proxy abaixo resolve
+app.use(['api/chamados', '/v2.0'], createProxyMiddleware({
+    target: 'http://localhost:5000',
+    changeOrigin: true,
+    logLevel: 'debug' 
+}));
+
+// 3. ARQUIVOS ESTÁTICOS
+// Verifica se a pasta build existe antes de servir
+const buildPath = path.join(__dirname, 'build');
+app.use(express.static(buildPath));
+
+// 4. SPA FALLBACK
+app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log(`====================================================`);
+    console.log(`FRONTEND SERVER RODANDO NA PORTA ${port}`);
+    console.log(`PROXY REDIRECIONANDO PARA PORTA 5028`);
+    console.log(`====================================================`);
 });

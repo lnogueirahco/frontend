@@ -1,785 +1,285 @@
 import { useState, useEffect } from 'react';
 import { Group, Text, Paper, Title, Stack, Box } from '@mantine/core';
-import { Badge } from "../components/ui/badge";
-import {
-  parseISO,
-  differenceInDays,
-  formatDistanceToNow
-} from 'date-fns';
+import { Badge } from "../components/ui/badge"; // Assumindo seu Shadcn ui
+import { parseISO, differenceInDays, formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// Configuração rígida de cores e alertas
+const DASHBOARD_CONFIG = {
+  MIN_EXCELLENT_RATING: 4.5,
+  MIN_WARNING_RATING: 4.1, // Ajuste fino: abaixo de 4.0 já é crítico
+  COLORS: {
+    EXCELLENT: 'text-emerald-400',
+    WARNING: 'text-amber-400',
+    CRITICAL: 'text-red-500',
+    EXCELLENT_BG: 'bg-emerald-500/10 border-emerald-500/20',
+    WARNING_BG: 'bg-amber-500/10 border-amber-500/20',
+    CRITICAL_BG: 'bg-red-500/10 border-red-500/30 shadow-[0_0_30px_-10px_rgba(239,68,68,0.15)]',
+  }
+};
+
+// Utilitário para limpar o HTML sujo que vem da API do TomTicket
+const stripHtml = (html) => {
+  if (!html) return "Sem mensagem registrada.";
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || "";
+};
+
 export function TabelaChamados({ chamados }) {
-
-  
-
   const [records, setRecords] = useState([]);
 
   useEffect(() => {
+    const listaLimpa = Array.isArray(chamados) ? chamados : (chamados?.data || []);
     
-    const listaLimpa = Array.isArray(chamados)
-    ? chamados
-    : (chamados?.data || []);
-
-    const listaComScore = listaLimpa.map((chamado) => {
-
-      let score = 0;
+    const listaProcessada = listaLimpa.map((chamado) => {
       const hoje = new Date();
+      
+      // Parse seguro das datas
+      const dataSLA = chamado.slaDeadlineDate ? parseISO(chamado.slaDeadlineDate) : null;
+      const dataAtualizacao = chamado.updatedAt ? parseISO(chamado.updatedAt) : hoje;
+      const lastMessageDateParsed = chamado.lastMessageDate ? parseISO(chamado.lastMessageDate) : null;
+      const scheduleDateParsed = chamado.scheduleDate ? parseISO(chamado.scheduleDate) : null;
+      
+      const diasSemInteracao = differenceInDays(hoje, dataAtualizacao);
+      const isSlaVencido = dataSLA && dataSLA < hoje;
+      const isHomologacao = chamado.statusDescription?.includes("Homologação");
+      const isEmAtendimento = chamado.statusDescription === "Em Atendimento";
+
+      // Análise de Rating para cores dinâmicas
+      const rating = chamado.mediaAvaliacaoCliente || 0;
+      const isCriticalRating = rating > 0 && rating < DASHBOARD_CONFIG.MIN_WARNING_RATING;
+      const isWarningRating = rating >= DASHBOARD_CONFIG.MIN_WARNING_RATING && rating < DASHBOARD_CONFIG.MIN_EXCELLENT_RATING;
+      
+      const ratingColor = isCriticalRating ? DASHBOARD_CONFIG.COLORS.CRITICAL : 
+                          isWarningRating ? DASHBOARD_CONFIG.COLORS.WARNING : 
+                          DASHBOARD_CONFIG.COLORS.EXCELLENT;
+
+      const cardStyle = isCriticalRating ? DASHBOARD_CONFIG.COLORS.CRITICAL_BG :
+                        isWarningRating ? DASHBOARD_CONFIG.COLORS.WARNING_BG :
+                        'bg-zinc-900/40 border-zinc-800/60';
+
+      let scoreAdicional = 0;
+
+      if (rating > 0 && !isHomologacao) { 
+        if (rating < DASHBOARD_CONFIG.MIN_WARNING_RATING) {
+          chamado.totalScore  += 5; 
+        } else if (rating < DASHBOARD_CONFIG.MIN_EXCELLENT_RATING) {
+          chamado.totalScore +=  1;
+        }
+      }
 
       const motivos = [];
+      if (chamado.situationId === 3) motivos.push("Respondido pelo cliente");
+      if (isSlaVencido) motivos.push("SLA Estourado");
+      if (isHomologacao) motivos.push("Em Homologação");
+      if (isEmAtendimento) motivos.push("Em Atendimento");
+      if (isCriticalRating) motivos.push("Risco de Detração");
 
-      const dataSLA = chamado.sla?.deadline?.date
-        ? parseISO(chamado.sla.deadline.date)
-        : null;
-
-      const dataUltimaAtividade = chamado.status?.apply_date
-        ? parseISO(chamado.status.apply_date)
-        : hoje;
-
-      const prioridade = chamado.priority || 1;
-
-      const horasPassadas =
-        (chamado.elapsed_time || 0) / 3600;
-
-      const diasSemInteracao =
-        differenceInDays(hoje, dataUltimaAtividade);
-
-      const isHomologacao =
-        chamado.situation?.description?.includes("Homologação");
-
-      const respondidoPeloCliente = 
-        chamado.situation.id === 3;
-
-      const isEmAtendimento =
-        chamado.status?.description === "Em Atendimento";
-
-      const isSlaVencido =
-        dataSLA && dataSLA < hoje;
-
-      const isManterOperacao = chamado.custom_fields?.open?.some(
-        f => f.label === "Classificação" && f.value?.includes("01")
-      );
-      
-      // 2. Reabertura
-      const isReaberto = chamado.reopened === true;
-
-      // 3. Complexidade por Anexos
-      const temAnexos = chamado.attachments?.length > 0;
-
-      /*
-      =====================================
-      REGRAS PRINCIPAIS
-      =====================================
-      */
-
-      // PRIORIDADE BASE
-      score += prioridade * 3;
-
-      // SLA
-      if (isSlaVencido) {
-        score += 15;
-        motivos.push("SLA vencido");
+      // Insight focado em ação rápida
+      let insight = "Acompanhamento operacional normal.";
+      if (isCriticalRating) {
+        insight = `ALERTA: Média do cliente está em ${rating.toFixed(1)}.`;
+      } else if (isSlaVencido) {
+        insight = "SLA expirado. Pare o que estiver fazendo e assuma este ticket.";
+      } else if (isHomologacao) {
+        insight = diasSemInteracao >= 3 
+          ? `Cobrar cliente: ${diasSemInteracao} dias sem retorno na homologação.` 
+          : "Aguardando validação do cliente.";
       }
 
-      // REABERTURA (+12)
-      if (isReaberto) {
-        score += 12;
-        motivos.push("Chamado reaberto");
-      }
-
-      // ANEXOS (+2 por evidência)
-      if (temAnexos) {
-        score += 2;
-        motivos.push("Possui evidências/anexos");
-      }
-
-      if (isManterOperacao) {
-        score += 1;
-        motivos.push("Impacto: Manter a Operação");
-      }
-
-      // CHAMADO ENVELHECIDO
-      const pesoAntiguidade =
-        Math.min(Math.floor(horasPassadas / 12), 8);
-
-      score += pesoAntiguidade;
-
-      if (pesoAntiguidade >= 4) {
-        motivos.push("Chamado envelhecido");
-      }
-
-      /*
-      =====================================
-      EM ATENDIMENTO
-      =====================================
-      */
-
-      if (isEmAtendimento) {
-
-        // Atendimento sempre deve subir
-        score += 8;
-
-        motivos.push("Aguardando atuação técnica");
-
-        // Muito tempo sem atualizar
-        if (diasSemInteracao >= 2) {
-          score += 6;
-          motivos.push("Sem atualização recente");
-        }
-
-      }
-
-      /*
-      =====================================
-      HOMOLOGAÇÃO
-      =====================================
-      */
-
-      if (isHomologacao) {
-
-        // Desce naturalmente na fila
-        score -= 10;
-
-        motivos.push("Aguardando validação do cliente");
-
-        // Porém começa a subir novamente
-        // se ficar mofando
-        if (diasSemInteracao >= 4) {
-
-          score += 14;
-
-          motivos.push("Homologação sem retorno");
-
-        }
-
-      } 
-
-// Premissa: 
-// Se hoje é 06/05 e a entrega é 11/05 -> diasParaEntrega = -5 (Faltam 5 dias)
-// Se hoje é 06/05 e a entrega é 01/05 -> diasParaEntrega = 5 (Atrasado 5 dias)
-
-const dataAgendamento = chamado.schedule_date
-  ? parseISO(chamado.schedule_date)
-  : undefined;
-
-// 1. SÓ CALCULA SE A DATA EXISTIR
-if (dataAgendamento) {
-    // Calcula a diferença: (Hoje - Data do Ticket)
-    // Se hoje é 06 e a entrega é 11 -> resultado é -5 (Futuro)
-    const diasParaEntrega = differenceInDays(hoje, dataAgendamento);
-    const diasAbsolutos = Math.abs(diasParaEntrega);
-
-    if (diasParaEntrega < 0) {
-        // --- CASO: FUTURO (FALTAM X DIAS) ---
-        if (diasAbsolutos <= 10) {
-            const bonusUrgencia = 3 + (5 - diasAbsolutos) * 2;
-            score += bonusUrgencia;
-            motivos.push(`Faltam ${diasAbsolutos} dia(s) para a entrega.`);
-        }
-    } 
-    else if (diasParaEntrega === 0) {
-        // --- CASO: É HOJE! (SÓ ENTRA SE TIVER DATA) ---
-        score += 25; 
-        motivos.push("ENTREGA PLANEJADA PARA HOJE!");
-    } 
-    else {
-        // --- CASO: ATRASADO (PASSADO) ---
-        const pesoAtraso = Math.min(15 + (diasParaEntrega * 3), 30);
-        score += pesoAtraso;
-        motivos.push(`ATENÇÃO: Entrega atrasada há ${diasParaEntrega} dia(s).`);
-    }
-}
-
-if(respondidoPeloCliente){ 
-  score += 50; 
-  motivos.push("SLA em andamento");
-}
-
-// Se cair no else aqui (sem data), o score não muda e nenhum motivo é adicionado.
-
-      /*
-      =====================================
-      RISCO VISUAL
-      =====================================
-      */
-
-      let config = {
-        risk: "Saudável",
-        border: "border-zinc-800",
-        riskBg: "bg-emerald-500/10 border-emerald-500/20",
-        riskText: "text-emerald-300",
-      };
-
-      if (score >= 22) {
-
-        config = {
-          risk: "Crítico",
-          border: "border-red-500/20",
-          riskBg: "bg-red-500/10 border-red-500/20",
-          riskText: "text-red-300",
-        };
-
-      }
-      else if (score >= 12) {
-
-        config = {
-          risk: "Atenção",
-          border: "border-amber-500/20",
-          riskBg: "bg-amber-500/10 border-amber-500/20",
-          riskText: "text-amber-300",
-        };
-
-      }
-
-      /*
-      =====================================
-      INSIGHT OPERACIONAL
-      =====================================
-      */
-
-      let insight =
-        "Chamado operacional em acompanhamento.";
-
-      if (isHomologacao && diasSemInteracao < 4) {
-
-        insight =
-          `Aguardando retorno do cliente. Recomendado cobrar em ${4 - diasSemInteracao} dia(s).`;
-
-      }
-
-      if (isHomologacao && diasSemInteracao >= 4) {
-
-        insight =
-          "Cliente sem retorno na homologação. Necessário follow-up operacional.";
-
-      }
-
-      if (isEmAtendimento && diasSemInteracao < 2) {
-
-        insight =
-          "Chamado em atuação técnica ativa.";
-
-      }
-
-      if (isEmAtendimento && diasSemInteracao >= 2) {
-
-        insight =
-          "Chamado em atendimento sem atualização recente.";
-
-      }
-
-      if (isSlaVencido) {
-
-        insight =
-          "SLA expirado. Necessário priorizar atendimento imediatamente.";
-
-      }
+      // Configuração baseada no Score da View
+      let config = { riskText: "text-zinc-300" };
+      if (chamado.totalScore >= 20) config.riskText = "text-red-400";
+      else if (chamado.totalScore >= 10) config.riskText = "text-amber-400";
 
       return {
         ...chamado,
-        score,
         motivos,
         insight,
-        prioridade,
         config,
-        dataSLA,
-        diasSemInteracao,
-        dataUltimaAtividade,
+        ratingColor,
+        cardStyle,
+        isCriticalRating,
+        isSlaVencido,
         isHomologacao,
-        respondidoPeloCliente,        
-        isEmAtendimento,
+        // Datas formatadas em STRING para evitar o erro do React
+        displayAtualizacao: formatDistanceToNow(dataAtualizacao, { addSuffix: true, locale: ptBR }),
+        displayLastMessageDate: lastMessageDateParsed ? format(lastMessageDateParsed, "dd/MM 'às' HH:mm") : "--/--", 
+        displayScheduleDate: scheduleDateParsed ? format(scheduleDateParsed, "dd/MM 'às' HH:mm") : null, 
+        // Textos limpos
+        cleanLastMessageAtendente: stripHtml(chamado.lastMessageAtendente),
+        cleanLastMessage: stripHtml(chamado.lastMessage)
       };
-
     });
 
-    setRecords(
-      [...listaComScore].sort((a, b) => b.score - a.score)
-    );
-
+    setRecords([...listaProcessada].sort((a, b) => b.totalScore - a.totalScore));
   }, [chamados]);
 
   return (
-
-  <Stack
-      gap="xl"
-      p="xl"
-      radius="xl" // <--- Adiciona o arredondamento aqui
-      className="bg-[#09090b] min-h-screen"
-    >
-
-      {/* HEADER */}
-
-      <Group justify="space-between" >
-
-        <Box >
-
-          <Title
-            order={1}
-            className="text-white tracking-tight text-4xl"
-          >
-            Dashboard Operacional
+    <Stack gap="lg" p="xl" className="bg-[#040405] min-h-screen font-sans selection:bg-blue-500/30">
+      
+      {/* HEADER TÁTICO */}
+      <Group justify="space-between" className="border-b border-zinc-800/50 pb-6 mb-2">
+        <Box>
+          <Title order={1} className="text-zinc-100 tracking-tighter text-3xl font-black flex items-center gap-3">
+            <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
+            Ticket Expert Manager <span className="text-zinc-600 font-mono text-lg font-normal">/ v2</span>
           </Title>
-
-          <Text
-            size="sm"
-            className="text-zinc-500 mt-1"
-          >
-            Priorização inteligente baseada em contexto operacional
+          <Text size="xs" className="text-zinc-500 font-mono uppercase tracking-[0.2em] mt-2 ml-6">
+            Priorização Analítica de Suporte
           </Text>
-
         </Box>
-
-        <div className="
-          px-5 py-4
-          rounded-2xl
-          border
-          border-zinc-800
-          bg-zinc-900/60
-          backdrop-blur-xl
-        ">
-
-          <Text className="text-zinc-500 text-xs uppercase tracking-wider">
-            Chamados ativos
-          </Text>
-
-          <Text className="text-white text-3xl font-black">
-            {records.length}
-          </Text>
-
-        </div>
-
+        
+        <Group gap="md">
+          <div className="px-5 py-2 rounded-xl border border-zinc-800 bg-zinc-900/50 flex flex-col items-end">
+            <Text className="text-zinc-500 text-[9px] uppercase font-black tracking-widest">Ativos</Text>
+            <Text className="text-white text-xl font-black tabular-nums leading-none mt-1">{records.length}</Text>
+          </div>
+        </Group>
       </Group>
 
-      {/* CARDS */}
+      {/* RENDER DOS CARDS */}
+      <Stack gap="md">
+        {records.map((item) => (
+          <Paper 
+            key={item.id} 
+            radius="lg" 
+            className={`
+              relative overflow-hidden transition-all duration-300 border
+              hover:border-zinc-500 hover:scale-[1.005] group
+              ${item.cardStyle}
+            `}
+          >
+            {/* Barra lateral indicadora de SLA */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${item.isSlaVencido ? 'bg-red-500' : 'bg-emerald-500'}`} />
 
-      <Stack gap="lg" >
+            <div className="flex flex-col xl:flex-row pl-1">
+              
+              {/* === BLOCO ESQUERDO: CONTEXTO (65%) === */}
+              <div className="flex-1 p-6 border-b xl:border-b-0 xl:border-r border-zinc-800/40">
+                <Group justify="space-between" mb="md">
+                  <Group gap="sm">
+                    <Text className="font-mono text-[11px] text-zinc-400 bg-black/40 px-2 py-1 rounded border border-zinc-800">
+                      #{item.protocol}
+                    </Text>
+                    <Badge variant="outline" className={`text-[10px] border-zinc-700 ${item.isSlaVencido ? 'text-red-400' : 'text-zinc-300'}`}>
+                      {item.statusDescription}
+                    </Badge>
+                  </Group>
 
-        {records.map((item) => {
+                <Group gap="sm" >
+                  <Text className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
+                    {item.displayScheduleDate != null ? "Agendado para " + item.displayScheduleDate : ""} 
+                  </Text>  
+                  <Text className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
+                    Atualizado {item.displayAtualizacao}
+                  </Text>
+                    </Group>
+                </Group>
 
-          const ultimaAtualizacao =
-            item.dataUltimaAtividade
-              ? formatDistanceToNow(item.dataUltimaAtividade, {
-                  addSuffix: true,
-                  locale: ptBR
-                })
-              : "-";
+                <Title order={3} className="text-zinc-100 text-xl font-bold truncate mb-1">
+                  {item.organizationName}
+                </Title>
+                <Text className="text-zinc-400 text-sm font-medium mb-5 truncate">
+                  {item.subject}
+                </Text>
 
-          const isOverdue =
-            item.dataSLA && item.dataSLA < new Date();
-
-          return (
-
-            <Paper
-              key={item.id}
-              radius="2xl"
-              className={`
-                bg-zinc-900/60
-                backdrop-blur-xl
-                border
-                ${item.config.border}
-                hover:border-zinc-700
-                transition-all
-                duration-300
-                overflow-hidden
-              `}
-            >
-
-              <div className="p-7">
-
-                {/* TOPO */}
-
-                <div className="grid grid-cols-12 gap-8">
-
-                  {/* ESQUERDA */}
-
-                  <div className="col-span-12 xl:col-span-8">
-
-                    <div className="flex items-start justify-between gap-4">
-
-                      <div>
-
-                        <div className="flex items-center gap-3 mb-3">
-
-                          <Text className="text-zinc-500 text-sm">
-                            #{item.protocol}
-                          </Text>
-
-                          <div className={`
-                            px-2 py-1
-                            rounded-lg
-                            border
-                            text-xs
-                            ${item.config.riskBg}
-                            ${item.config.riskText}
-                          `}>
-                            {item.config.risk}
-                          </div>
-                          
-
-  
-                             {item.respondidoPeloCliente
-                            ?      <div className={`
-                              px-2 py-1
-                              rounded-lg
-                              border
-                              text-xs
-                              bg-red-500/10 border-red-500/20
-                              text-red-300 
-                            `} >
-                              Respondido pelo cliente
-                            </div>
-                            : ""}
-                          
-                       
-                          
-
-                        </div>
-
-                        <Title
-                          order={3}
-                          className="text-white"
-                        >
-                          {item.customer?.organization?.name}
-                        </Title>
-
-                        <Text
-                          className="
-                            text-zinc-400
-                            mt-4
-                            text-[15px]
-                            leading-7
-                          "
-                        >
-                          {item.subject}
-                        </Text>
-
-                      </div>
-
-                    </div>
-
+                {/* VISUALIZADOR DE MENSAGENS (Ação vs Reação) */}
+                <Stack gap="sm" className="bg-black/30 p-4 rounded-xl border border-zinc-800/50">
+                  
+                  {/* SUA RESPOSTA (Em cima, destaque azulado/tech) */}
+                  <div className="relative pl-4 border-l-2 border-blue-500 py-1">
+                    <Text className="text-blue-400 text-[9px] font-black uppercase tracking-widest mb-1 flex justify-between items-center">
+                      <span>Sua Última Resposta (Lucas)</span>
+                    </Text>
+                    <Text size="sm" className="text-zinc-300 line-clamp-2 leading-relaxed">
+                      {item.cleanLastMessageAtendente}
+                    </Text>
                   </div>
 
-                  {/* SCORE */}
+                  {/* DIVISOR SUTIL */}
+                  <div className="h-px w-full bg-gradient-to-r from-zinc-800 to-transparent ml-4 my-1" />
 
-                  <div className="col-span-12 xl:col-span-4">
-
-                    <div className={`
-                      rounded-3xl
-                      border
-                      ${item.config.riskBg}
-                      p-5
-                    `}>
-
-                      <Text className="
-                        text-zinc-500
-                        text-xs
-                        uppercase
-                        tracking-widest
-                      ">
-                        Score Operacional
-                      </Text>
-
-                      <div className="flex items-end gap-3 mt-3">
-
-                        <Text className={`
-                          text-5xl
-                          font-black
-                          ${item.config.riskText}
-                        `}>
-                          {item.score}
-                        </Text>
-
-                        <Text className={`
-                          mb-2
-                          text-sm
-                          font-medium
-                          ${item.config.riskText}
-                        `}>
-                          {item.config.risk}
-                        </Text>
-
-                      </div>
-
-                      <Text className="
-                        text-zinc-400
-                        text-sm
-                        mt-4
-                        leading-6
-                      ">
-                        {item.insight}
-                      </Text>
-
-                    </div>
-
+                  {/* RESPOSTA DO CLIENTE (Embaixo, destaque neutro) */}
+                  <div className="relative pl-4 border-l-2 border-zinc-600 py-1">
+                    <Text className="text-zinc-500 text-[9px] font-black uppercase tracking-widest mb-1 flex justify-between items-center">
+                      <span>Última do Cliente ({item.customerName?.split(' ')[0]})</span>
+                      <span className="font-mono text-[8px]">{item.displayLastMessageDate}</span>
+                    </Text>
+                    <Text size="sm" className="text-zinc-400 line-clamp-2 leading-relaxed italic">
+                      "{item.cleanLastMessage}"
+                    </Text>
                   </div>
-
-                </div>
-
-                {/* GRID INFERIOR */}
-
-                <div className="
-                  grid
-                  grid-cols-12
-                  gap-5
-                  mt-7
-                ">
-
-                  {/* SLA */}
-
-                  <div className="col-span-12 md:col-span-3">
-
-                    <div className="
-                      rounded-2xl
-                      border
-                      border-zinc-800
-                      bg-black/20
-                      p-4
-                      h-full
-                    ">
-
-                      <Text className="
-                        text-zinc-500
-                        text-xs
-                        uppercase
-                        tracking-wider
-                      ">
-                        SLA
-                      </Text>
-
-                      <Text className={`
-                        mt-3
-                        text-lg
-                        font-semibold
-                        ${isOverdue
-                          ? "text-red-300"
-                          : "text-emerald-300"}
-                      `}>
-
-                        {isOverdue
-                          ? "SLA expirado"
-                          : "Dentro do prazo"}
-
-                      </Text>
-
-                      <Text className="
-                        text-zinc-500
-                        text-sm
-                        mt-2
-                      ">
-                        Última atualização {ultimaAtualizacao}
-                      </Text>
-
-                    </div>
-
-                  </div>
-
-                  {/* STATUS */}
-
-                  <div className="col-span-12 md:col-span-3">
-
-                    <div className="
-                      rounded-2xl
-                      border
-                      border-zinc-800
-                      bg-black/20
-                      p-4
-                      h-full
-                    ">
-
-                      <Text className="
-                        text-zinc-500
-                        text-xs
-                        uppercase
-                        tracking-wider
-                      ">
-                        Status Operacional
-                      </Text>
-
-                      <div className="mt-3">
-
-                        <Badge className="
-                          bg-zinc-800
-                          text-zinc-300
-                          border
-                          border-zinc-700
-                        ">
-                          {item.status?.description || "-"}
-                        </Badge>
-
-                      </div>
-
-                      <Text className="
-                        text-zinc-500
-                        text-sm
-                        mt-3
-                      ">
-                        {item.isHomologacao
-                          ? `Sem retorno há ${item.diasSemInteracao} dia(s)`
-                          : `Prioridade P${item.prioridade}`}
-                      </Text>
-
-                    </div>
-
-                  </div>
-
-                  {/* MOTIVOS */}
-
-                  <div className="col-span-12 md:col-span-3">
-
-                    <div className="
-                      rounded-2xl
-                      border
-                      border-zinc-800
-                      bg-black/20
-                      p-4
-                      h-full
-                    ">
-
-                      <Text className="
-                        text-zinc-500
-                        text-xs
-                        uppercase
-                        tracking-wider
-                      ">
-                        Motivos da priorização
-                      </Text>
-
-                      <div className="
-                        flex
-                        flex-wrap
-                        gap-2
-                        mt-4
-                      ">
-
-                        {item.motivos.map((motivo) => (
-
-                          <div
-                            key={motivo}
-                            className="
-                              px-2
-                              py-1
-                              rounded-lg
-                              bg-zinc-800
-                              border
-                              border-zinc-700
-                              text-zinc-300
-                              text-xs
-                            "
-                          >
-                            {motivo}
-                          </div>
-
-                        ))}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* RECOMENDAÇÃO */}
-
-                  <div className="col-span-12 md:col-span-3">
-
-                    <div className="
-                      rounded-2xl
-                      border
-                      border-zinc-800
-                      bg-black/20
-                      p-4
-                      h-full
-                    ">
-
-                      <Text className="
-                        text-zinc-500
-                        text-xs
-                        uppercase
-                        tracking-wider">
-                        Próxima ação
-                      </Text>
-
-                      
-
-                      <Text className="
-                        text-white
-                        text-sm
-                        leading-7
-                        mt-3
-                      ">
-
-                        {item.isHomologacao && item.diasSemInteracao < 4 &&
-                          `Realizar follow-up em ${4 - item.diasSemInteracao} dia(s).`
-                        }
-
-                        {item.isHomologacao && item.diasSemInteracao >= 4 &&
-                          "Cobrar retorno do cliente imediatamente."
-                        }
-
-                        {item.isEmAtendimento &&
-                          "Continuar atuação técnica e registrar evolução."
-                        }
-
-                        {!item.isHomologacao && !item.isEmAtendimento &&
-                          "Monitorar andamento operacional do chamado."
-                        }
-
-                      <button
-                        onClick={() => window.open(`https://console.tomticket.com/dashboard/ticket/history/${item.id}`, '_blank')}
-                        className="
-                          mt-3 
-                          w-full 
-                          group 
-                          relative 
-                          inline-flex 
-                          items-center 
-                          justify-center 
-                          px-4 
-                          py-2.5 
-                          font-medium 
-                          text-white 
-                          transition-all 
-                          duration-200 
-                          bg-blue-600/10 
-                          border 
-                          border-blue-500/50 
-                          rounded-xl 
-                          hover:bg-blue-600 
-                          hover:border-blue-600 
-                          active:scale-95 
-                          overflow-hidden
-                        "
-                      >
-                        <span className="relative flex items-center gap-2 text-sm">
-                          Abrir Ticket
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            className="w-4 h-4 transition-transform group-hover:translate-x-1" 
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="arrow-right" />
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                        </span>
-                      </button>
-                      </Text>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
+                </Stack>
               </div>
 
-            </Paper>
+              {/* === BLOCO DIREITO: MÉTRICAS E DECISÃO (35%) === */}
+              <div className="w-full xl:w-[400px] p-6 flex flex-col justify-between">
+                
+                <div className="grid grid-cols-2 gap-6 mb-4">
+                  {/* SCORE SYSTEM */}
+                  <Box>
+                    <Text className="text-zinc-500 text-[10px] uppercase font-black mb-1 tracking-widest">
+                      Priority Score
+                    </Text>
+                    <Text className={`text-5xl font-black tracking-tighter leading-none ${item.config.riskText}`}>
+                      {item.totalScore}
+                    </Text>
+                  </Box>
 
-          );
+                  {/* RATING DO CLIENTE */}
+                  <Box className="text-right">
+                    <Text className="text-zinc-500 text-[10px] uppercase font-black mb-1 tracking-widest">
+                      Rating Cliente
+                    </Text>
+                    <Text className={`text-5xl font-black tracking-tighter leading-none ${item.ratingColor}`}>
+                      {item.mediaAvaliacaoCliente?.toFixed(1) || "-.-"} de {item.totalAvaliacoesCliente}
+                    </Text>
+                  </Box>
+                </div>
 
-        })}
+                {/* TAGS RÁPIDAS */}
+              <Group gap="xs" mb="sm" justify="end">
+                {item.motivos.slice(0, 3).map((motivo) => (
+                  <span 
+                    key={motivo} 
+                    className="text-[10px] font-bold uppercase tracking-wider text-zinc-300 bg-zinc-800 px-2.5 py-1 rounded-md border border-zinc-700"
+                  >
+                    {motivo}
+                  </span>
+                ))}
+              </Group>
 
+                {/* CAIXA DE INSIGHT OPERACIONAL */}
+                <div className="bg-black/40 rounded-lg p-3 border border-zinc-800/80 mb-4">
+                  <Text className="text-zinc-300 text-xs font-medium leading-snug">
+                    {item.insight}
+                  </Text>
+                </div>
+
+                {/* BOTÃO DE AÇÃO */}
+                <button
+                  onClick={() => window.open(`https://console.tomticket.com/dashboard/ticket/history/${item.id}`, '_blank')}
+                  className={`
+                    w-full py-3.5 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-200
+                    flex items-center justify-center gap-2
+                    ${(item.isCriticalRating || item.isSlaVencido ) && !item.isHomologacao
+                      ? 'bg-red-600 hover:bg-red-500 text-white' 
+                      : 'bg-zinc-100 hover:bg-white text-black'}
+                  `}
+                >
+                  {(item.isCriticalRating  && !item.isHomologacao )|| item.isSlaVencido ? 'Intervir Imediatamente' : 'Assumir Chamado'}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </button>
+              </div>
+
+            </div>
+          </Paper>
+        ))}
       </Stack>
-
     </Stack>
-
   );
 }
 
