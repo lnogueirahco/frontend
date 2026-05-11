@@ -25,7 +25,7 @@ const stripHtml = (html) => {
   return doc.body.textContent || "";
 };
 
-export function TabelaChamados({ chamados, filter }) {
+export function TabelaChamados({ chamados, filter, abrirModal}) {
   const [records, setRecords] = useState([]);
   
   useEffect(() => {
@@ -33,8 +33,8 @@ export function TabelaChamados({ chamados, filter }) {
     
     const chamadosFiltrados = listaLimpa?.filter(item => 
       item.protocol.toString().includes(filter) || 
-      item.organizationName?.toLowerCase().includes(filter.toLowerCase()) 
-    ); 
+      item.organizationName?.toLowerCase().includes(filter.toLowerCase())  
+    ) ?? []; 
 
     const listaProcessada = chamadosFiltrados.map((chamado) => {
       const hoje = new Date();
@@ -171,7 +171,7 @@ export function TabelaChamados({ chamados, filter }) {
                       {item.statusDescription}
                     </Badge> 
                     <Badge variant="primary" className={`text-[10px]`}>
-                      <button> 
+                      <button onClick={() => abrirModal(item)}> 
                         Resumir com IA
                       </button>
                     </Badge>
