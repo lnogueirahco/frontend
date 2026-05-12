@@ -30,7 +30,7 @@ export function ModalResumoChamado({ response, chamado, onClose }) {
           <div className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             <ReactMarkdown 
               components={{
-                h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-4 mb-2 text-primary border-b pb-1 border-slate-200 dark:border-slate-800" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-4 mb-2 text-white border-b pb-1 border-slate-200 dark:border-slate-800" {...props} />,
                 ul: ({node, ...props}) => <ul className="list-disc ml-4 space-y-1 mb-4" {...props} />,
                 strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
                 p: ({node, ...props}) => <p className="mb-3" {...props} />,

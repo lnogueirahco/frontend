@@ -3,7 +3,7 @@ import { Group, Text, Paper, Title, Stack, Box } from '@mantine/core';
 import { Badge } from "../components/ui/badge"; // Assumindo seu Shadcn ui
 import { parseISO, differenceInDays, formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
+import { Sparkles } from 'lucide-react';
 // Configuração rígida de cores e alertas
 const DASHBOARD_CONFIG = {
   MIN_EXCELLENT_RATING: 4.5,
@@ -27,14 +27,21 @@ const stripHtml = (html) => {
 
 export function TabelaChamados({ chamados, filter, abrirModal}) {
   const [records, setRecords] = useState([]);
-  
+
   useEffect(() => {
     const listaLimpa = Array.isArray(chamados) ? chamados : (chamados?.data || []);
     
-    const chamadosFiltrados = listaLimpa?.filter(item => 
-      item.protocol.toString().includes(filter) || 
-      item.organizationName?.toLowerCase().includes(filter.toLowerCase())  
-    ) ?? []; 
+
+    const chamadosFiltrados = listaLimpa?.filter(item => {
+
+      const termoBusca = typeof filter === 'string' ? filter.toLowerCase() : "";
+
+      const matchProtocolo = item.protocol?.toString().includes(termoBusca);
+      
+      const matchOrganizacao = item.organizationName?.toLowerCase().includes(termoBusca);
+
+      return matchProtocolo || matchOrganizacao;
+    }) ?? [];
 
     const listaProcessada = chamadosFiltrados.map((chamado) => {
       const hoje = new Date();
@@ -170,11 +177,20 @@ export function TabelaChamados({ chamados, filter, abrirModal}) {
                     <Badge variant="outline" className={`text-[10px] border-zinc-700 ${item.isSlaVencido ? 'text-red-400' : 'text-zinc-300'}`}>
                       {item.statusDescription}
                     </Badge> 
-                    <Badge variant="primary" className={`text-[10px]`}>
-                      <button onClick={() => abrirModal(item)}> 
-                        Resumir com IA
-                      </button>
-                    </Badge>
+                  
+
+                  <button
+                    onClick={() => abrirModal(item)}
+                    className="group relative flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-[10px] font-medium text-slate-300 transition-all hover:border-purple-500/50 hover:text-white active:scale-95"
+                  >
+                    {/* Efeito de Gradiente sutil no fundo ao passar o mouse */}
+                    <div className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                    
+                    {/* Ícone de Estrelas (IA) */}
+                    <Sparkles size={12} className="text-purple-400 group-hover:animate-pulse rounded-full" />
+                    
+                    <span>Resumir com IA</span>
+                  </button>
 
                   </Group>
 

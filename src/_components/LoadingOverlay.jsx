@@ -8,10 +8,10 @@ function LoadingOverlay (){
         <div className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin"></div>
       </div>
       <h3 className="mt-6 text-lg font-semibold text-slate-900 dark:text-slate-100">
-        IA Analisando Chamado...
+        Carregando...
       </h3>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 animate-pulse">
-        Cruzando dados de logs, prazos e sentimentos.
+        Buscando dados e populando tabelas...
       </p>
     </div>
   </div>
