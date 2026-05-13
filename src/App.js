@@ -8,6 +8,9 @@ import MenuBar from './_components/MenuBar';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ChamadosPage from './_components/ChamadosPage';
 import { useState } from 'react';
+import PlanejamentoPage from './_components/PlanejamentoPage';
+import '@mantine/core/styles.css';
+import '@mantine/dates/styles.css';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -30,9 +33,8 @@ function AppContent() {
           <div className="p-4 space-y-4 flex-1">            
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black/40 overflow-hidden shadow-sm">
               <Routes>
-                <Route path="/chamados" element={
-                  <ChamadosPage filter={filter}/>
-                } />                 
+                <Route path="/chamados" element={ <ChamadosPage filter={filter}/> } />                 
+                <Route path="/planejamento" element={ <PlanejamentoPage/> } />                 
               </Routes>
             </div>
           </div>

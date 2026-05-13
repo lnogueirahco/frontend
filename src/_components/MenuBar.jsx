@@ -46,23 +46,28 @@ export default function MenuBar({isLoading, onSearch}) {
   }; 
 
 
-  const navItems = [{
-    name: 'Dashboard',
-    icon: Home, 
-    href: "/"
-  }, {
-    name: 'Chamados',
-    icon: Folder, 
-    href: "/chamados"
-  }, {
-    name: 'Experiência cliente',
-    icon: User, 
-    href: "/expeciencia-cliente"
-  }, {
-    name: 'Planejamento',
-    icon: Calendar, 
-    href: "planejamento"
-  }];
+  const navItems = [
+    {
+      name: 'Dashboard',
+      icon: Home, 
+      href: "/"
+    }, 
+    { 
+      name: 'Chamados',
+      icon: Folder, 
+      href: "/chamados"
+    },
+    {
+      name: 'Planejamento',
+      icon: Calendar, 
+      href: "planejamento"
+    }, 
+    {
+      name: 'Experiência cliente',
+      icon: User, 
+      href: "/expeciencia-cliente"
+    }
+  ];
   return <div className="mx-4 sm:mx-6 mt-2 font-sans">
       <header className="relative">
         <div className="bg-black border border-gray-800 rounded-2xl shadow-2xl p-4 text-white">

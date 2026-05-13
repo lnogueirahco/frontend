@@ -135,7 +135,7 @@ export function TabelaChamados({ chamados, filter, abrirModal}) {
         <Box>
           <Title order={1} className="text-zinc-100 tracking-tighter text-3xl font-black flex items-center gap-3">
             <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
-            Ticket Expert Manager <span className="text-zinc-600 font-mono text-lg font-normal">/ v2</span>
+            Ticket Expert Manager <span className="text-zinc-600 font-mono text-lg font-normal"></span>
           </Title>
           <Text size="xs" className="text-zinc-500 font-mono uppercase tracking-[0.2em] mt-2 ml-6">
             Priorização Analítica de Suporte
