@@ -38,7 +38,7 @@ function ChamadosPlanner({ chamados, abrirModal }) {
       className="bg-[#0b0b0d] border border-zinc-800/50 shadow-2xl"
       // Trava o container externo para não crescer com o conteúdo
       style={{ 
-        height: '85vh', 
+        height: '93vh', 
         display: 'flex', 
         flexDirection: 'column', 
         overflow: 'hidden' 

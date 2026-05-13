@@ -8,7 +8,7 @@ const Planner = ({ chamados, abrirModal }) => {
   const [currentDate] = useState(new Date()); 
 
   const horaInicio = 7;
-  const totalHoras = 11; 
+  const totalHoras = 12; 
   const alturaHora = 60; 
 
   const getDays = () => {
