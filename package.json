@@ -5,6 +5,7 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@fontsource-variable/geist": "^5.2.8",
+    "@mantine/charts": "^9.2.0",
     "@mantine/core": "^9.1.1",
     "@mantine/dates": "^9.2.0",
     "@mantine/hooks": "^9.1.1",

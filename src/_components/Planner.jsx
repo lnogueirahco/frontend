@@ -3,8 +3,8 @@ import { format, startOfWeek, addDays, eachDayOfInterval, startOfMonth, endOfMon
 import { ptBR } from 'date-fns/locale';
 import { Title } from '@mantine/core';
 
-const Planner = ({ chamados, abrirModal }) => {
-  const [view, setView] = useState('week');
+const Planner = ({ chamados, abrirModal, navegacaoAtiva = true}) => {
+  const [view, setView] = useState('day');
   const [currentDate] = useState(new Date()); 
 
   const horaInicio = 7;
@@ -26,7 +26,9 @@ const Planner = ({ chamados, abrirModal }) => {
   return (
     <div className="bg-black min-h-screen p-6 text-zinc-100 font-sans">
       
-      {/* HEADER */}
+      {/* HEADER */}   
+      {navegacaoAtiva && (
+
       <div className="flex justify-between items-center mb-8">
         <Title order={1} className="text-zinc-100 tracking-tighter text-3xl font-black flex items-center gap-3">
             <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
@@ -40,6 +42,7 @@ const Planner = ({ chamados, abrirModal }) => {
           ))}
         </div>
       </div>
+      )}
 
       <div className="flex border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950 shadow-2xl">
         

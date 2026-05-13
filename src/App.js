@@ -11,6 +11,7 @@ import { useState } from 'react';
 import PlanejamentoPage from './_components/PlanejamentoPage';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
+import DashboardPage from './_components/DashboardPage';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -35,6 +36,7 @@ function AppContent() {
               <Routes>
                 <Route path="/chamados" element={ <ChamadosPage filter={filter}/> } />                 
                 <Route path="/planejamento" element={ <PlanejamentoPage/> } />                 
+                <Route path="/" element={ <DashboardPage/> } />                 
               </Routes>
             </div>
           </div>
