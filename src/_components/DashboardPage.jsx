@@ -12,6 +12,8 @@ import LoadingOverlay from './LoadingOverlay';
 import ChamadosPlanner from './ChamadosPlanner';
 import buscarChamados from '../_services/buscarChamados';
 import ModalAgendamentoChamado from './ModalAgendamentoChamado';
+import { format, startOfWeek, addDays, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
     Home, Folder, Calendar, User,
     Target, AlertTriangle, CheckCircle2, Flame,
@@ -45,6 +47,7 @@ const PRIORITY_MAP = {
 function getPriorityConfig(p) {
     return PRIORITY_MAP[p] ?? { label: '—', color: '#71717a', dot: 'bg-zinc-500' };
 }
+
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
 
@@ -112,6 +115,7 @@ function BacklogMetric({ icon: Icon, label, value, color }) {
 
 function DashboardPage() {
     const { buscarAgendamentos, criarAgendamento, atualizarAgendamento, deletarAgendamento } = useChamadosService();
+    const [currentDate] = useState(new Date()); 
 
     const [state, setState] = useState({
         loading: false,
@@ -135,8 +139,8 @@ function DashboardPage() {
     });
 
     const agendamentosHoje = useMemo(() => {
-        if (!agendamentos) return [];
-        return agendamentos.filter(a => a.scheduleDate?.startsWith(HOJE));
+        if (!agendamentos) return []; 
+        return agendamentos.filter(a => a.scheduleDate?.startsWith(currentDate.toISOString().split('T')[0]));
     }, [agendamentos]);
 
     const resumoHoje = useMemo(() => {
@@ -256,7 +260,7 @@ function DashboardPage() {
                             <Group gap={6} mb={12} align="center">
                                 <Target size={13} color="#60a5fa" strokeWidth={1.8} />
                                 <Text style={{ color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 900, fontSize: 9 }}>
-                                    Metas de Hoje — 13 Mai 2026
+                                    Panorama de hoje — {format(currentDate, "dd MMMM yyyy", { locale: ptBR }).toUpperCase()}
                                 </Text>
                             </Group>
 
